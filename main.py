@@ -1,12 +1,12 @@
 import re
 import PyPDF2
-import os
 from pathlib import Path
 
 def extract_text_from_pdf(pdf_path):
+    """Extract raw text from the PDF."""
     try:
         with open(pdf_path, 'rb') as file:
-            reader = PyPDF2.PdfReader(file) 
+            reader = PyPDF2.PdfReader(file)
             text = ''
             for page in reader.pages:
                 text += page.extract_text()
@@ -16,40 +16,51 @@ def extract_text_from_pdf(pdf_path):
         return None
 
 def find_largest_number(text):
+    """Find the largest number from the extracted PDF text, considering scaling context like 'millions'."""
     if text is None:
         return None, None
-    
-    # regex to find all numbers in the text, including those with commas and decimal points
-    number_pattern = r'[-+]?[,.\d]+(?:[eE][-+]?\d+)?'
+
+    # Updated regex pattern to find all numbers (with commas, optional decimals, and optional signs)
+    number_pattern = r'[-+]?\d{1,3}(?:,\d{3})*(?:\.\d+)?'
     numbers = re.findall(number_pattern, text)
+
     largest_number = float('-inf')
     largest_original = ""
+
     for number in numbers:
-        # rm the commas and convert to float
-        clean_num = number.replace(',', '')
-        try: 
-            value = float(clean_num)
-            # check context of nearby words with scale
-            context = text[max(0, text.index(number) - 50):min(len(text), text.index(number) + 50)]
-            if 'million' in context.lower() or 'millions' in context.lower():
-                value *= 1_000_000
-            elif 'billion' in context.lower() or 'billions' in context.lower():
-                value *= 1_000_000_000
-            elif 'thousand' in context.lower() or 'thousands' in context.lower():
-                value *= 1_000
+        clean_num = number.replace(',', '')  # Remove commas
+        try:
+            value = float(clean_num)  # Convert the number to a float
 
+            # Check for scaling context (millions, billions, etc.) near the number
+            context_start = max(0, text.index(number) - 100)
+            context_end = min(len(text), text.index(number) + 100)
+            context = text[context_start:context_end].lower()
 
+            # Detect if scale context (millions, billions, etc.) is mentioned
+            current_factor = 1  # Default scale factor
+            if 'million' in context or 'millions' in context:
+                current_factor = 1_000_000
+            elif 'billion' in context or 'billions' in context:
+                current_factor = 1_000_000_000
+            elif 'thousand' in context or 'thousands' in context:
+                current_factor = 1_000
+
+            # Apply the scale factor only once
+            value *= current_factor
+
+            # Track the largest number found
             if value > largest_number:
                 largest_number = value
                 largest_original = number
+
         except ValueError:
-            # skip if can't convert to float
-            continue
-    
+            continue  # Skip any number we can't convert to float
+
     return (largest_number, largest_original) if largest_number != float('-inf') else (None, None)
 
 def main():
-    input_dir = Path("input")
+    input_dir = Path("input")  # Update this path with your folder
     pdf_paths = [f for f in input_dir.iterdir() if f.suffix.lower() == '.pdf']
     
     if not pdf_paths:
