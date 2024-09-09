@@ -60,7 +60,7 @@ def find_largest_number(text):
     return (largest_number, largest_original) if largest_number != float('-inf') else (None, None)
 
 def main():
-    input_dir = Path("input")  # Update this path with your folder
+    input_dir = Path("input")
     pdf_paths = [f for f in input_dir.iterdir() if f.suffix.lower() == '.pdf']
     
     if not pdf_paths:
